@@ -1,1 +1,0 @@
-no-reference video quality assessment
