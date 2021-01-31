@@ -1,0 +1,82 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+all_losses_6 = []   # 保存 batch = 600 的所有loss
+all_losses_12 = []  # 保存 batch = 1200 的所有loss
+
+'''
+    迭代处理文本各行；每轮调用 get_loss_from_line 处理
+    并将所有数据放入 all_losses_6 和 all_losses_12 中
+'''
+def hand_lines(str_ls=None):
+    if str_ls is None:
+        str_ls = []
+
+    string = str_ls[0]
+    epoch = string[string.find('epoch') + 7 : string.find('batch') - 1].strip() # 获取 epoch
+
+    loss_6 = get_loss_from_line(str_ls[1: 1 + 4])
+    loss_12 = get_loss_from_line(str_ls[6: 6 + 4])
+
+    print(epoch)
+    print("batch = 600" + str(loss_6))
+    print("batch = 1200" + str(loss_12))
+    all_losses_6.append(loss_6)
+    all_losses_12.append(loss_12)
+
+'''
+    从精简过的文本行中获取四个损失值
+'''
+def get_loss_from_line(str_ls=None):
+    if str_ls is None:
+        str_ls = []
+    losses = []
+    for val in str_ls:
+        if 'loss' in val:
+            losses.append(val[val.rfind(' ') + 1 : len(val)].strip()) # 截取最终的损失值
+    return losses
+
+'''
+    以 all_losses_6， all_losses_12 为数据源绘制 2 * 4 样式的折线图
+'''
+def plot_figure():
+    losses_6 = np.array(all_losses_6[2 : len(all_losses_6)]).astype(np.float)   # 去除前两个值
+    losses_12 = np.array(all_losses_12[2 : len(all_losses_12)]).astype(np.float)
+    x = np.arange(1, 51)
+
+    yLabels = ['rec_loss', 'per_loss', 'tpl_loss', 'adv_loss']
+    plt.figure(figsize=(16, 8))  # 设置窗口大小
+    for i in range(8):
+        ax = plt.subplot(241 + i)
+        if i < 4:    # batch = 600
+            plt.plot(x, np.array(losses_6)[:, i].flatten(), color = 'g', label="batch=600")
+            ax.set_title(yLabels[i])
+        else:        # batch = 1200
+            plt.plot(x, np.array(losses_12)[:, i % 4].flatten(),color = 'r', label="batch=1200")
+            plt.xlabel("epoch")
+
+        plt.legend()
+
+    plt.show()
+
+def readTxt(file_path):
+    content = []
+    with open(file_path) as file_object:
+        for line in file_object:
+            line = line[line.find("INFO") + 6 : len(line)]      # 剪去含 'INFO: ' 在内的头部 减少接下来处理时间
+            if line.find('Current') != -1:
+                if len(content) != 0:                           # 有数据，数据处理后进行下一轮
+                    hand_lines(content)
+                    content.clear()
+            else:
+                content.append(line)
+        # 获取最后一轮数据
+        if len(content) >= 10:
+            hand_lines(content[0: 10])
+            content.clear()
+    plot_figure()
+
+
+if __name__ == "__main__":
+    file_path = "train.log"
+    readTxt(file_path)
